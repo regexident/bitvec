@@ -1731,6 +1731,84 @@ where
 	pub unsafe fn set_aliased_unchecked(&self, index: usize, value: bool) {
 		self.as_bitptr().add(index).freeze().frozen_write_bit(value);
 	}
+
+	/// Replaces the value of a single bit, using alias-safe operations,
+	/// returning the previous value.
+	///
+	/// This is equivalent to [`.replace()`], except that it does not require an
+	/// `&mut` reference, and allows bit-slices with alias-safe storage to share
+	/// write permissions.
+	///
+	/// ## Parameters
+	///
+	/// - `&self`: This method only exists on bit-slices with alias-safe
+	///   storage, and so does not require exclusive access.
+	/// - `index`: The bit index to set. It must be in `0 .. self.len()`.
+	/// - `value`: The new bit-value to write into the bit at `index`.
+	///
+	/// ## Panics
+	///
+	/// This panics if `index` is out of bounds.
+	///
+	/// ## Examples
+	///
+	/// ```rust
+	/// use bitvec::prelude::*;
+	/// use core::cell::Cell;
+	///
+	/// let bits: &BitSlice<_, _> = bits![Cell<usize>, Lsb0; 0, 1];
+	/// assert!(!bits.replace_aliased(0, true));
+	/// assert!(bits.replace_aliased(1, false));
+	///
+	/// assert_eq!(bits, bits![1, 0]);
+	/// ```
+	///
+	/// [`.replace()`]: Self::replace
+	#[inline]
+	pub fn replace_aliased(&self, index: usize, value: bool) -> bool {
+		self.assert_in_bounds(index, 0..self.len());
+		unsafe { self.replace_aliased_unchecked(index, value) }
+	}
+
+	/// Replaces the value of a single bit, using alias-safe operations and
+	/// without bounds checking, returning the previous value.
+	///
+	/// This is equivalent to [`.replace_unchecked()`], except that it does not
+	/// require an `&mut` reference, and allows bit-slices with alias-safe
+	/// storage to share write permissions.
+	///
+	/// ## Parameters
+	///
+	/// - `&self`: This method only exists on bit-slices with alias-safe
+	///   storage, and so does not require exclusive access.
+	/// - `index`: The bit index to replace. It must be in `0 .. self.len()`.
+	/// - `value`: The new bit-value to write into the bit at `index`.
+	///
+	/// ## Safety
+	///
+	/// The caller must ensure that `index` is not out of bounds.
+	///
+	/// ## Examples
+	///
+	/// ```rust
+	/// use bitvec::prelude::*;
+	/// use core::cell::Cell;
+	///
+	/// let data = Cell::new(0u8);
+	/// let bits = &data.view_bits::<Lsb0>()[.. 2];
+	/// assert!(!unsafe { bits.replace_aliased_unchecked(3, true) });
+	/// assert_eq!(data.get(), 8);
+	/// ```
+	///
+	/// [`.replace_unchecked()`]: Self::replace_unchecked
+	#[inline]
+	pub unsafe fn replace_aliased_unchecked(
+		&self,
+		index: usize,
+		value: bool,
+	) -> bool {
+		self.as_bitptr().add(index).freeze().frozen_write_bit(value)
+	}
 }
 
 /// Miscellaneous information.
